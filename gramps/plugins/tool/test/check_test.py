@@ -87,19 +87,23 @@ class TestCheckNoteLinks(unittest.TestCase):
             self.db.add_note(note, trans)
         return note
 
-    def _link(self, prop: str, value: str) -> StyledTextTag:
+    def _link(
+        self, prop: str, value: str, span: tuple[int, int] = (0, 3)
+    ) -> StyledTextTag:
         """
-        Return a link to a note over the first word of a text.
+        Return a link to a note over part of a text, its first word by default.
 
         :param prop: "handle" or "gramps_id".
         :type prop: str
         :param value: The handle or the Gramps ID linked to.
         :type value: str
+        :param span: The start and the end of the linked words.
+        :type span: tuple[int, int]
         :returns: The link.
         :rtype: :py:class:`StyledTextTag`
         """
         return StyledTextTag(
-            StyledTextTagType.LINK, "gramps://Note/%s/%s" % (prop, value), [(0, 3)]
+            StyledTextTagType.LINK, "gramps://Note/%s/%s" % (prop, value), [span]
         )
 
     def _check(self) -> CheckIntegrity:
@@ -174,6 +178,33 @@ class TestCheckNoteLinks(unittest.TestCase):
             self._check()
         committed = [call.args[0].get_handle() for call in commit_note.call_args_list]
         self.assertEqual(committed, [bad.get_handle()])
+
+    def test_only_the_bad_link_of_a_note_removed(self) -> None:
+        """
+        In a note with a good link and a bad one, only the bad one is removed.
+        """
+        good = self._link("handle", str(self.target.get_handle()))
+        bad = self._link("handle", "nosuch", (4, 8))
+        note = self._add_note("See this.", [good, bad])
+        checker = self._check()
+        self.assertEqual(checker.bad_note_links, 1)
+        self.assertEqual([tag.value for tag in self._tags(note)], [good.value])
+
+    def test_every_bad_link_of_a_note_removed(self) -> None:
+        """
+        A note that links twice to something not in the tree loses both links,
+        and is committed once.
+        """
+        first = self._link("handle", "nosuch")
+        second = self._link("handle", "nosuch", (4, 8))
+        note = self._add_note("See this.", [first, second])
+        with patch.object(
+            self.db, "commit_note", wraps=self.db.commit_note
+        ) as commit_note:
+            checker = self._check()
+        self.assertEqual(checker.bad_note_links, 2)
+        self.assertEqual(self._tags(note), [])
+        self.assertEqual(commit_note.call_count, 1)
 
 
 if __name__ == "__main__":
