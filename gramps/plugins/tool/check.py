@@ -2554,7 +2554,7 @@ class CheckIntegrity:
                         value,
                     )
                     self.bad_note_links += 1
-            if len(text.get_tags()) != new_tags:
+            if len(text.get_tags()) != len(new_tags):
                 text.set_tags(new_tags)
                 self.db.commit_note(note, self.trans)
 
