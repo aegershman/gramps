@@ -1101,7 +1101,12 @@ class SimpleAccess:
         :param object_class: "Person", "Source", etc.
         :param prop: "gramps_id", or "handle"
         :param value: gramps_id or handle.
+        :returns: the object, or None if there is no such object.
         """
         func = self.dbase.method("get_%s_from_%s", object_class, prop)
         if func:
-            return func(value)
+            try:
+                return func(value)
+            except HandleError:
+                # Deals with deleted objects referenced in Note Links
+                return None
