@@ -13,11 +13,13 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program; if not, see <https://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
-"""Tests for SimpleAccess.get_link.
+"""
+Unittest for SimpleAccess.get_link.
 
 A link in the text of a note names its target by handle or by Gramps ID. The
 Note Link Report and the Link References quick view look the target up with
@@ -27,8 +29,14 @@ not in the tree has to come back as None both ways.
 # python3 -m unittest gramps.gen.simple.test.simpleaccess_test -v
 """
 
+# ------------------------
+# Python modules
+# ------------------------
 import unittest
 
+# ------------------------
+# Gramps modules
+# ------------------------
 from gramps.gen.db import DbTxn
 from gramps.gen.db.utils import make_database
 from gramps.gen.lib import Note
@@ -41,37 +49,64 @@ from gramps.gen.simple import SimpleAccess
 #
 # -------------------------------------------------------------------------
 class TestGetLink(unittest.TestCase):
-    """Tests for SimpleAccess.get_link."""
+    """
+    Tests for :py:meth:`SimpleAccess.get_link`.
+    """
 
-    def setUp(self):
+    def setUp(self) -> None:
+        """
+        Make an in-memory tree that holds one note.
+        """
         self.db = make_database("sqlite")
         self.db.load(":memory:")
-        self.note = Note()
-        self.note.set("A note")
+        note = Note()
+        note.set("A note")
         with DbTxn("Add note", self.db) as trans:
-            self.db.add_note(self.note, trans)
+            self.db.add_note(note, trans)
+        self.handle = str(note.get_handle())
+        self.gramps_id = str(note.get_gramps_id())
         self.sdb = SimpleAccess(self.db)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
+        """
+        Close the tree.
+        """
         self.db.close()
 
-    def test_by_handle(self):
-        found = self.sdb.get_link("Note", "handle", self.note.handle)
-        self.assertEqual(found.handle, self.note.handle)
+    def test_by_handle(self) -> None:
+        """
+        A handle that is in the tree returns its object.
+        """
+        found = self.sdb.get_link("Note", "handle", self.handle)
+        assert found is not None
+        self.assertEqual(found.get_handle(), self.handle)
 
-    def test_by_gramps_id(self):
-        found = self.sdb.get_link("Note", "gramps_id", self.note.gramps_id)
-        self.assertEqual(found.handle, self.note.handle)
+    def test_by_gramps_id(self) -> None:
+        """
+        A Gramps ID that is in the tree returns its object.
+        """
+        found = self.sdb.get_link("Note", "gramps_id", self.gramps_id)
+        assert found is not None
+        self.assertEqual(found.get_handle(), self.handle)
 
-    def test_missing_handle(self):
+    def test_missing_handle(self) -> None:
+        """
+        A handle that was never in the tree returns None.
+        """
         self.assertIsNone(self.sdb.get_link("Note", "handle", "nosuchhandle"))
 
-    def test_handle_of_deleted_object(self):
+    def test_handle_of_deleted_object(self) -> None:
+        """
+        The handle of an object that was removed returns None.
+        """
         with DbTxn("Remove note", self.db) as trans:
-            self.db.remove_note(self.note.handle, trans)
-        self.assertIsNone(self.sdb.get_link("Note", "handle", self.note.handle))
+            self.db.remove_note(self.handle, trans)
+        self.assertIsNone(self.sdb.get_link("Note", "handle", self.handle))
 
-    def test_missing_gramps_id(self):
+    def test_missing_gramps_id(self) -> None:
+        """
+        A Gramps ID that is not in the tree returns None.
+        """
         self.assertIsNone(self.sdb.get_link("Note", "gramps_id", "N9999"))
 
 

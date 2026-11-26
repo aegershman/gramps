@@ -35,6 +35,7 @@ from ..lib import (
     Note,
     Date,
     Tag,
+    PrimaryObject,
 )
 from ..errors import HandleError
 from ..datehandler import displayer
@@ -1094,14 +1095,20 @@ class SimpleAccess:
         else:
             return "Error: incorrect object class in describe: '%s'" % type(obj)
 
-    def get_link(self, object_class, prop, value):
+    def get_link(
+        self, object_class: str, prop: str, value: str
+    ) -> PrimaryObject | None:
         """
         Given a object_class, prop, and value return the object.
 
         :param object_class: "Person", "Source", etc.
+        :type object_class: str
         :param prop: "gramps_id", or "handle"
+        :type prop: str
         :param value: gramps_id or handle.
-        :returns: the object, or None if there is no such object.
+        :type value: str
+        :returns: The object, or ``None`` if there is no such object.
+        :rtype: :py:class:`PrimaryObject`
         """
         func = self.dbase.method("get_%s_from_%s", object_class, prop)
         if func:
@@ -1110,3 +1117,4 @@ class SimpleAccess:
             except HandleError:
                 # Deals with deleted objects referenced in Note Links
                 return None
+        return None
